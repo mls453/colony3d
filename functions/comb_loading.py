@@ -1,6 +1,8 @@
 import os
 import cv2
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
 def get_organized_colony_names(beeframe_meta):
     """ Return names of all colonies that have frame and side info.
@@ -126,7 +128,8 @@ def load_colony_comb_at_date(colony_df, date, folder_root,
                     print(f"No valid info for frame {frame_num},",
                           f"{colony_name}, {date}."
                          )
-                    nest.append(None)
+                    print("returning None")
+                    return None
                 if mirror_b:
                     side_a = side_b[:,::-1]
                 else:
@@ -184,7 +187,89 @@ def load_colony_comb(beeframe_meta, colony_name, folder_root,
                                               folder_root, masks_folder_name,
                                               combine_ab, mirror_b
                                              )
+        if colony_day is None:
+            print(f"Colony is missing frame info. Returning day until this point.")
+            break
         colony.append(colony_day)
-        
-    colony = np.stack(colony, axis=0)
+    if len(colony) >= 1:
+        colony = np.stack(colony, axis=0)
+    else:
+        colony = None
     return colony
+
+def create_colonies_summary(colonies, comb_class, wood_class,
+                            num_interior_pixels=None
+                           ):
+    """Sumarize frame contents for list of colonies.
+    
+    For each frame compute number of wood and comb pixels.
+    And fraction of interior if given.
+    
+    Args:
+        colonies: list of colony arrays (WxFxHxW)
+        comb_class: the value of comb in frame masks
+        wood_class: the value of wood in frame masks
+        num_interior_pixels: how many pixels within the wooden
+            border of the frame. Used to normalize pixel counts
+            of comb (and wood but less meaningful)
+    
+    Returns:
+        data frame with columns: colony, week, frame, type,
+        wood_pixels, comb_pixels, wood_fraction, comb_fraction
+    """
+    frame_summaries = []
+    for colony_dict in colonies:
+        colony = colony_dict['colony']
+        colony_name = colony_dict['name']
+        colony_type = colony_dict['type']
+        for week_num, week in enumerate(colony):
+            for frame_num, frame in enumerate(week):
+                wood_pixel_count = np.sum(frame==wood_class)
+                comb_pixel_count = np.sum(frame==comb_class)
+                frame_summary = {'colony': colony_name,
+                                 'week': week_num,
+                                 'frame': frame_num,
+                                 'type': colony_type,
+                                 'wood_pixels': wood_pixel_count,
+                                 'comb_pixels': comb_pixel_count,
+                                 'wood_fraction': np.nan,
+                                 'comb_fraction': np.nan
+                                }
+                if num_interior_pixels:
+                    frac_wood = wood_pixel_count / num_interior_pixels
+                    frac_comb = comb_pixel_count / num_interior_pixels
+                    frame_summary['wood_fraction'] = frac_wood
+                    frame_summary['comb_fraction'] = frac_comb
+                frame_summaries.append(frame_summary)
+    frame_contents = pd.DataFrame(frame_summaries)
+    return frame_contents
+
+def visualize_colony(colony, figsize=(20, 10), max_class=2,
+                     colony_name=None):
+    """ Show all frames in colony in grid.
+    
+    Args: 
+        colony: (WxFxHxW) array
+        figsize: size to draw figure
+        max_class: number of classes to display in frames
+        colony_name: name of the colony
+        
+    Returns:
+        figure (plots figure)
+    """
+    num_weeks = colony.shape[0]
+    num_frames = colony.shape[1]
+    fig, axs = plt.subplots(num_weeks, num_frames, figsize=figsize)
+    for week, week_frames in enumerate(colony):
+        for frame_ind, frame in enumerate(week_frames):
+            axs[week, frame_ind].imshow(frame, vmin=0, vmax=max_class)
+            axs[week, frame_ind].get_xaxis().set_visible(False)
+            axs[week, frame_ind].get_yaxis().set_visible(False)
+            axs[week, frame_ind].set_ylabel(f"week {week}")
+            axs[week, frame_ind].set_xlabel(f"frame {frame_ind}")
+
+    if colony_name:
+        _ = fig.suptitle(f"Colony {colony_name}")
+        
+    return fig
+
