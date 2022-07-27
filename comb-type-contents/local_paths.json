@@ -1,0 +1,5 @@
+{"root_data_folder": "YOUR LOCAL PATH/nest_photos",
+ "frame_positions_file": "YOUR LOCAL PATH/nest_photos/img_to_text_df_TOEDIT.csv",
+ "nest_data_entry": "YOUR LOCAL PATH/nest_photos/3D_HB_nest_data_entry.csv",
+ "local_functions": "YOUR LOCAL PATH/colony3d/functions"
+}
