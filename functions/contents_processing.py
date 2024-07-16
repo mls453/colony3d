@@ -95,7 +95,7 @@ def get_frame_filename(frame_positions, frame_num, side):
     return filename
 
 def load_colony(colony_folder, label_type, dates, colony_frame_positions, 
-               downsample=None, verbose=True):
+               downsample=None, verbose=True, num_frames=10):
     """Load colony data of given label type at specified dates.
     
     Args:
@@ -113,7 +113,7 @@ def load_colony(colony_folder, label_type, dates, colony_frame_positions,
         Dict with dates as keys and 20 x h x w arrays as values
             """
 
-    num_frames = 10
+    
     side_names = ["a", "b"]
     
     colony = {}
